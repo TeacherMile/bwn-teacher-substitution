@@ -4311,7 +4311,7 @@ window.addEventListener('DOMContentLoaded', () => {
 /* ป้ายเวอร์ชัน (ไว้เช็กว่าเปิดไฟล์ล่าสุดอยู่) */
 (function () {
   const sb = document.getElementById('sidebar'); if (!sb) return;
-  const v = document.createElement('div'); v.className = 'app-ver'; v.textContent = 'เวอร์ชัน 7.3 · Luxe'; sb.appendChild(v);
+  const v = document.createElement('div'); v.className = 'app-ver'; v.textContent = 'เวอร์ชัน 7.4 · Luxe'; sb.appendChild(v);
 })();
 
 /* ── บันทึกภาพ/PDF: ไม่ใช้ window.open เลย (ถูกบล็อกใน LINE, iOS, และเว็บที่เพิ่มไว้หน้าจอโฮม) ── */
@@ -5252,6 +5252,40 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('DOMContentLoaded', mount); mount();
 })();
 
+
+/* ── ป้ายบอกตารางสอน/ตารางเรียนที่ใช้ (มุมล่างหน้าแรก) ── */
+(function () {
+  const css = document.createElement('style');
+  css.textContent = '#sched-info{display:none;flex-shrink:0;margin-left:auto;align-items:center;font-size:12px;line-height:1.3;color:var(--text-2);background:var(--btn-sec-bg);border:1px solid var(--line);border-radius:999px;padding:6px 13px;white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}#header-actions + #sched-info,#sched-info ~ .lx-theme{margin-left:6px}body:has(#panel-home.active) #sched-info:not(:empty){display:inline-flex}#home-body{padding-bottom:12px}@media(max-width:900px){#sched-info .si-pre{display:none}}@media(max-width:560px){#sched-info{font-size:11px;padding:5px 9px}}';
+  document.head.appendChild(css);
+  const MON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const cache = {};
+  const thShort = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? `${+m[3]} ${MON[+m[2] - 1]} ${+m[1] + 543}` : ''; };
+  const label = r => {
+    if (!r || !r.ok || !r.version) return '';
+    const n = String(r.version).replace(/\D/g, '') || r.version;
+    const eff = thShort(r.effectiveDate);
+    return `<span class="si-pre">ใช้ข้อมูลตารางเรียน-ตารางสอน&nbsp;</span>ฉบับที่ ${n}` + (eff ? ` : ${eff}` : '');
+  };
+  App.renderSchedInfo = async function (date) {
+    const panel = document.getElementById('panel-home'); if (!panel || !this.state.token) return;
+    let el = document.getElementById('sched-info');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'sched-info';
+      const hdr = document.querySelector('#page-dashboard header'), th = hdr && hdr.querySelector('.lx-theme');
+      if (hdr && th) hdr.insertBefore(el, th); else if (hdr) hdr.appendChild(el); else panel.appendChild(el);
+    }
+    const d = date || this._homeDate || (typeof todayStr === 'function' ? todayStr() : '');
+    if (cache[d]) { el.innerHTML = label(cache[d]); return; }
+    try {
+      const r = await this.api({ action: 'getScheduleInfo', date: d });
+      if (r && r.ok) cache[d] = r;
+      el.innerHTML = label(r);
+    } catch (e) { el.innerHTML = ''; }
+  };
+  const lh = App.loadHome;
+  App.loadHome = function () { const p = lh.apply(this, arguments); Promise.resolve(p).then(() => this.renderSchedInfo(this._homeDate)).catch(() => {}); return p; };
+})();
 </script>
 <!-- Session Timeout Warning Modal -->
 <div id="session-warn-modal" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
